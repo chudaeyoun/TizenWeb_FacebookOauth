@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta name="viewport" content="width=device-width,user-scalable=no"/>
+	<script src="./lib/jquery.js"></script>
+	<script type="text/javascript" src="./lib/tau/mobile/js/tau.js" data-build-remove="false"></script>
+	<link rel="stylesheet"  href="./lib/tau/mobile/theme/default/tau.css">
+
+	<script src="./js/main.js"></script>
+	<title>Tizen Web IDE - Template - Tizen - Tizen Web UI Framework - Single-Page</title>
+	<link rel="stylesheet" type="text/css" href="./css/style.css"/>
+
+	<script>
+	
+	var oauthurl = "https://www.facebook.com/dialog/oauth?";
+	var client_id = "535218969958834";
+	var redirect_uri = "https://www.facebook.com/connect/login_success.html";
+	var scope = "public_profile,email,user_friends,user_photos,user_hometown,user_location,read_custom_friendlists,user_photos";
+	var final_uri = oauthurl + 'client_id=' + client_id + '&redirect_uri=' + redirect_uri + "&scope=" + scope;
+
+	function FBLogin(){
+	    console.log("inside login");
+	    window.authWin = window.open(final_uri, "blank", "", true);
+	    montiorURL();
+	}
+
+	function montiorURL() {
+		console.log("montiorURL");
+	    window.int = self.setInterval(function () {
+	        window.authCount = window.authCount + 1;
+	
+	        if (window.authWin && window.authWin.location) { 
+	            var currentURL = window.authWin.location.href;
+	            var inCallback = currentURL.indexOf("?code");
+	            if (inCallback >= 0) {
+	                var codeData = currentURL.substr(currentURL.indexOf("="));
+	                var code=codeData.substring(1);
+	                getAccesstoken(code);
+	            }
+	        }
+	        if (window.authCount > 30) {
+	            alert('30 seconds time out');
+	            window.authCount  =0;
+	            window.clearInterval(int)
+	            window.authWin.close();
+	        }
+    	}, 500);
+	}
+
+	function  getAccesstoken(code){
+	    $.ajax({
+	        type : "GET",
+	        url :'https://graph.facebook.com/oauth/access_token?client_id=535218969958834&redirect_uri=https://www.facebook.com/connect/login_success.html&client_secret=1533043b6b2efd0abfe54b55a0cc9b6a&code='+code,
+	        success : function(data) {
+	            try {
+	            	console.log("getAccesstoken acess success");
+	                accesstoken=data;
+	                access_token=parseToken(accesstoken);
+	                localStorage['accesstoken']=access_token;
+	                window.clearInterval(int)
+	                window.authWin.close();
+	                $.mobile.changePage("#menupage");
+	                //getHomepage();
+	                //getProfile();
+	                //getHomepage();
+	               //getFriends();
+	            }
+	            catch (e) {
+	                console.log(e);
+	            }
+	        },
+	        error : function() {
+	            $.mobile.changePage("#errpage");
+	            console.log("acess token error");
+	        }
+	    });    
+	}
+
+	function parseToken(accesstoken){
+	    var c = accesstoken.indexOf('access_token') ; 
+	    var L = accesstoken.indexOf('&expires') ;
+	    var y = accesstoken.substring(0, c) + accesstoken.substring(L, accesstoken.length);
+	    var remaining = accesstoken.replace(y,'');
+	    return (remaining.substring(13));
+	}
+
+	function getHomepage(){
+		$.ajax({
+		        type : "GET",
+		        url  :'https://graph.facebook.com/me/home?permissions=read_stream&access_token=' +localStorage['accesstoken'],
+		        success : function(data1) {
+		        	console.log("getHomepage() data = " + data1);
+		        	
+		            var from_id={};
+		            var from_name={};
+		            var messages={};
+		            var type={};
+		            var picture={};
+		            var link={};
+		            var image={};
+		            var story={};
+		            var Vname={};
+		            var Vdescription={};
+		            var home_length=data1.data.length;
+		            console.log("length is "+home_length);
+		            for(i=0;i < home_length;i++){
+		                from_id[i]=data1.data[i].from.id;
+		                from_name[i]=data1.data[i].from.name;
+		                type[i]=data1.data[i].type;
+		                story[i]=data1.data[i].story;
+		                messages[i]=data1.data[i].message;
+		                image[i]="http://graph.facebook.com/"+from_id[i]+"/picture";
+		                if((type[i]=="link")||(type[i]=="video")||(type[i]=="swf")){
+		                    link[i]=data1.data[i].link;
+		                    Vname[i]=data1.data[i].name;
+		                    Vdescription[i]=data1.data[i].description;
+		                    }
+		                else if(type[i]=="photo"){
+		                    picture[i]=data1.data[i].picture;
+		                }
+		                else{}
+		            }		            
+		        },
+		        error : function() {
+		            $.mobile.changePage("#errpage");
+		            console.log("acess token error");
+		        }
+		    });
+		}
+
+	function getProfile() {
+		$.ajax({
+	        type : "GET",
+	        dataType : 'json',
+	        url : 'https://graph.facebook.com/me?fields=first_name,last_name,education,location,languages,hometown,picture&permissions=read_stream&access_token=' +localStorage['accesstoken'] ,
+	        success : function(data1) {
+		        console.log("getProfile() data = " + data1);
+				/*
+	            var educationlength=data1.education.length;
+	            var school_image={};
+	            for(i=0;i< educationlength;i++){
+	                school[i]=data1.education[i].school.name;
+	                id[i]=data1.education[i].school.id;
+	                school_image[i]="http://graph.facebook.com/"+id[i]+"/picture";
+	            }
+	            */            
+	            var firstname=data1.first_name;
+	            var lastname=data1.last_name;     
+	            //var hometown=data1.hometown.name;
+	            //var hometown_id=data1.hometown.id;
+	            //console.log("firstname = " + firstname + " lastname = " + lastname + " hometown = " + hometown);
+	            //var hometown_url="http://graph.facebook.com/"+hometown_id+"/picture";
+	 
+	            //var location1=data1.location.name;
+	            //var location_id=data1.location.id;
+	            //var location_url="http://graph.facebook.com/"+location_id+"/picture";
+	      
+	            var pic_url=data1.picture.data.url;
+
+	            $('#getProfile ul').append('<li><span>MyPofile</span> <br>'
+	    	            					
+	    	            					+ '<img src = ' + pic_url + '>');				
+	        },
+	        error : function() {
+	        	$.mobile.changePage("#errpage");
+	            console.log("Unable to get your friends on Facebook");
+	        }
+	    });
+	}
+
+	function getFriends(){
+	    $.ajax({
+	        type : "GET",
+	        dataType : 'json',
+	        url : 'https://graph.facebook.com/me/friends?&access_token=' +localStorage['accesstoken'],
+	        success : function(data1) {
+		        
+	        	console.log("getFriends() data = " + data1);
+	        	
+	            $("#friends_id").empty();
+	            var jsonlength=data1.data.length;
+	            console.log("jsonlength = " + jsonlength);
+
+	            $('#getFriends ul').append('<li><span>MyFriendList</span><br>');
+	            
+	            for(i=0;i < jsonlength;i++)
+	            {
+	                names=data1.data[i].name;
+	                id=data1.data[i].id;
+	                img_url="http://graph.facebook.com/"+id+"/picture";
+	                console.log("i = " + i + " names = " + names + " id = " + id);
+
+	                $('#getFriends ul').append('<img src = ' + img_url + '>'
+        					+ " names = " + names + " id = " + id);				
+	            }
+
+	            $('#getFriends ul').append('</li>');
+ 				
+	         },
+	         error : function() {
+	         	console.log("Unable to get your friends on Facebook");
+	         }
+	    });
+	}
+
+	function Logout()
+	{
+	    $.ajax({
+	        type : "GET",
+	        url :'https://www.facebook.com/logout.php?next=https://www.facebook.com/connect/login_success.html&access_token='+localStorage['accesstoken'],
+	        success : function(data) {
+	            $.mobile.changePage("#Loginpage");        
+	        },
+	    	error: function(){console.log("error");}
+	    });
+	}
+	
+	</script>
+
+
+
+
+
+
+
+
+</head>
+
+<body>
+    <div data-role="page" id="Loginpage">
+        <div data-role="header" data-position="fixed">
+            <h1>Facebook Loain </h1>
+        </div><!-- /header -->
+        <div data-role="content">
+         	<button onClick='FBLogin();'> Login </button>   
+        </div><!-- /content -->
+    </div><!-- /page -->
+    
+    
+    <div data-role="page" id="menupage">
+   		<h1> 권한 획득 성공!!!!!!!</h1>
+   		
+   		<section id="getHomepage">
+	    	<ul>	    	
+	    	</ul>		    
+	    </section>
+	    <button onClick='getHomepage();'> getHomepage </button>
+	    	 
+	    <section id="getProfile">
+	    	<ul>
+	    	    	
+	    	</ul>		    
+	    </section>   
+	    <button onClick='getProfile();'> getProfile </button>
+	
+	    <section id="getFriends">
+	    	<ul>	    	    	
+	    	</ul>		    
+	    </section>
+	    <button onClick='getFriends();'> getFriends </button>	    
+	    
+	     <button onClick='Logout();'> Logout </button>	    
+	    		
+    </div>
+     
+     
+    <div data-role="page" id="errpage">
+    	<h1>권한 획득 에러 err</h1>
+    </div>
+    
+</body>
+</html>
